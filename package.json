@@ -1,0 +1,30 @@
+{
+  "name": "prompthon",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "start": "node server.js",
+    "benchmark": "node benchmark.js",
+    "test:concurrency": "node concurrency-test.js",
+    "test:durability": "node durability-policy-test.js",
+    "test:repair": "node repair-test.js",
+    "test:versioning": "node versioning-test.js",
+    "test:rebalance": "node rebalance-test.js",
+    "test:partition": "node partition-test.js",
+    "test": "node test.js && node integration-test.js && node dashboard-test.js && node corruption-test.js && node concurrency-test.js && node durability-policy-test.js && node repair-test.js && node versioning-test.js && node rebalance-test.js && node partition-test.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "@ronomon/queue": "^3.0.1",
+    "@ronomon/reed-solomon": "^6.0.0",
+    "express": "^5.2.1",
+    "mime-types": "^3.0.2",
+    "multer": "^2.4.0",
+    "supertest": "^7.3.0",
+    "uuid": "^14.0.2"
+  }
+}
