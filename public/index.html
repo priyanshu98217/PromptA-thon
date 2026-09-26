@@ -1,0 +1,1122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Reed-Solomon Erasure Storage Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-primary: #0a0e17;
+      --bg-secondary: #121826;
+      --bg-card: rgba(22, 30, 46, 0.7);
+      --border-color: rgba(255, 255, 255, 0.08);
+      --text-main: #f3f4f6;
+      --text-muted: #9ca3af;
+      --accent-blue: #3b82f6;
+      --accent-blue-hover: #2563eb;
+      --green-bg: rgba(16, 185, 129, 0.15);
+      --green-border: #10b981;
+      --green-text: #34d399;
+      --yellow-bg: rgba(245, 158, 11, 0.15);
+      --yellow-border: #f59e0b;
+      --yellow-text: #fbbf24;
+      --orange-bg: rgba(249, 115, 22, 0.2);
+      --orange-border: #f97316;
+      --orange-text: #fb923c;
+      --red-bg: rgba(239, 68, 68, 0.15);
+      --red-border: #ef4444;
+      --red-text: #f87171;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Inter', sans-serif;
+    }
+
+    body {
+      background: radial-gradient(circle at 50% 0%, #172554 0%, #0a0e17 70%);
+      color: var(--text-main);
+      min-height: 100vh;
+      padding: 2rem 1.5rem;
+    }
+
+    .container {
+      max-width: 1100px;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      gap: 2rem;
+    }
+
+    header {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .title-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+
+    h1 {
+      font-size: 1.85rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      background: linear-gradient(135deg, #ffffff 0%, #93c5fd 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .subtitle {
+      color: var(--text-muted);
+      font-size: 0.95rem;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.35rem 0.8rem;
+      border-radius: 9999px;
+      font-size: 0.82rem;
+      font-weight: 600;
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    /* Live Stats Banner */
+    .stats-card {
+      background: var(--bg-card);
+      backdrop-filter: blur(12px);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      padding: 1.5rem;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 1.5rem;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+    }
+
+    .stat-box {
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+    }
+
+    .stat-label {
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--text-muted);
+    }
+
+    .stat-value {
+      font-size: 1.4rem;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    /* Health Pill */
+    .health-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.4rem 0.9rem;
+      border-radius: 10px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      transition: all 0.3s ease;
+    }
+
+    .health-pill.healthy {
+      background: var(--green-bg);
+      border: 1px solid var(--green-border);
+      color: var(--green-text);
+    }
+
+    .health-pill.degraded {
+      background: var(--yellow-bg);
+      border: 1px solid var(--yellow-border);
+      color: var(--yellow-text);
+    }
+
+    .health-pill.impossible {
+      background: var(--red-bg);
+      border: 1px solid var(--red-border);
+      color: var(--red-text);
+    }
+
+    .status-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: currentColor;
+      box-shadow: 0 0 10px currentColor;
+    }
+
+    /* Node Grid */
+    .section-title {
+      font-size: 1.15rem;
+      font-weight: 600;
+      margin-bottom: 1rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .node-grid {
+      display: grid;
+      grid-template-columns: repeat(6, 1fr);
+      gap: 1rem;
+    }
+
+    @media (max-width: 950px) {
+      .node-grid {
+        grid-template-columns: repeat(3, 1fr);
+      }
+    }
+
+    @media (max-width: 550px) {
+      .node-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+
+    .node-card {
+      background: var(--bg-card);
+      border-radius: 14px;
+      padding: 1.2rem 0.9rem;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      gap: 0.7rem;
+      border: 2px solid var(--border-color);
+      transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+      position: relative;
+    }
+
+    .node-card.alive {
+      border-color: var(--green-border);
+      background: linear-gradient(180deg, rgba(16, 185, 129, 0.08) 0%, rgba(22, 30, 46, 0.8) 100%);
+    }
+
+    .node-card.alive.corrupted {
+      border-color: var(--orange-border);
+      background: linear-gradient(180deg, rgba(249, 115, 22, 0.12) 0%, rgba(22, 30, 46, 0.85) 100%);
+    }
+
+    .node-card.dead {
+      border-color: var(--red-border);
+      background: linear-gradient(180deg, rgba(239, 68, 68, 0.12) 0%, rgba(22, 30, 46, 0.9) 100%);
+      opacity: 0.85;
+    }
+
+    .node-card.partitioned {
+      border-color: #a855f7;
+      background: linear-gradient(180deg, rgba(168, 85, 247, 0.16) 0%, rgba(22, 30, 46, 0.9) 100%);
+    }
+
+    .node-header {
+      font-size: 1.1rem;
+      font-weight: 700;
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .node-role {
+      font-size: 0.72rem;
+      font-weight: 600;
+      padding: 0.15rem 0.5rem;
+      border-radius: 6px;
+      background: rgba(255, 255, 255, 0.07);
+      color: var(--text-muted);
+    }
+
+    .corrupted-badge {
+      font-size: 0.72rem;
+      font-weight: 700;
+      padding: 0.2rem 0.5rem;
+      border-radius: 6px;
+      background: var(--orange-bg);
+      border: 1px solid var(--orange-border);
+      color: var(--orange-text);
+      display: flex;
+      align-items: center;
+      gap: 0.3rem;
+      animation: fadeIn 0.3s ease;
+    }
+
+    .partitioned-badge {
+      font-size: 0.72rem;
+      font-weight: 700;
+      padding: 0.2rem 0.5rem;
+      border-radius: 6px;
+      background: rgba(168, 85, 247, 0.2);
+      border: 1px solid #a855f7;
+      color: #d8b4fe;
+      display: flex;
+      align-items: center;
+      gap: 0.3rem;
+      animation: fadeIn 0.3s ease;
+    }
+
+    .node-status-text {
+      font-size: 0.85rem;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+    }
+
+    .node-card.alive .node-status-text {
+      color: var(--green-text);
+    }
+
+    .node-card.alive.corrupted .node-status-text {
+      color: var(--orange-text);
+    }
+
+    .node-card.partitioned .node-status-text {
+      color: #c084fc;
+    }
+
+    .node-card.dead .node-status-text {
+      color: var(--red-text);
+    }
+
+    .node-btn-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+      width: 100%;
+      margin-top: 0.2rem;
+    }
+
+    /* Buttons */
+    button {
+      cursor: pointer;
+      font-size: 0.8rem;
+      font-weight: 600;
+      padding: 0.5rem 0.8rem;
+      border-radius: 8px;
+      border: none;
+      transition: all 0.2s ease;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.3rem;
+    }
+
+    button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .btn-kill {
+      background: rgba(239, 68, 68, 0.2);
+      color: #fca5a5;
+      border: 1px solid rgba(239, 68, 68, 0.4);
+      width: 100%;
+    }
+
+    .btn-kill:hover:not(:disabled) {
+      background: #ef4444;
+      color: white;
+      border-color: #ef4444;
+    }
+
+    .btn-corrupt {
+      background: rgba(249, 115, 22, 0.18);
+      color: #fed7aa;
+      border: 1px solid rgba(249, 115, 22, 0.4);
+      width: 100%;
+    }
+
+    .btn-corrupt:hover:not(:disabled) {
+      background: #ea580c;
+      color: white;
+      border-color: #ea580c;
+    }
+
+    .btn-revive {
+      background: rgba(16, 185, 129, 0.2);
+      color: #6ee7b7;
+      border: 1px solid rgba(16, 185, 129, 0.4);
+      width: 100%;
+    }
+
+    .btn-revive:hover:not(:disabled) {
+      background: #10b981;
+      color: white;
+      border-color: #10b981;
+    }
+
+    .btn-primary {
+      background: var(--accent-blue);
+      color: white;
+    }
+
+    .btn-primary:hover:not(:disabled) {
+      background: var(--accent-blue-hover);
+    }
+
+    .btn-download {
+      background: rgba(59, 130, 246, 0.15);
+      color: #93c5fd;
+      border: 1px solid rgba(59, 130, 246, 0.3);
+      padding: 0.4rem 0.8rem;
+    }
+
+    .btn-download:hover:not(:disabled) {
+      background: var(--accent-blue);
+      color: white;
+      border-color: var(--accent-blue);
+    }
+
+    /* Main Content Layout */
+    .main-grid {
+      display: grid;
+      grid-template-columns: 1fr 2fr;
+      gap: 1.5rem;
+    }
+
+    @media (max-width: 850px) {
+      .main-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .panel {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      padding: 1.5rem;
+      backdrop-filter: blur(12px);
+    }
+
+    /* Upload Form */
+    .upload-box {
+      border: 2px dashed rgba(255, 255, 255, 0.15);
+      border-radius: 12px;
+      padding: 1.8rem 1rem;
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.8rem;
+      background: rgba(0, 0, 0, 0.2);
+      transition: border-color 0.2s;
+    }
+
+    .upload-box:hover {
+      border-color: var(--accent-blue);
+    }
+
+    .file-input {
+      display: none;
+    }
+
+    .file-select-btn {
+      background: rgba(255, 255, 255, 0.08);
+      color: var(--text-main);
+      border: 1px solid var(--border-color);
+    }
+
+    .file-select-btn:hover {
+      background: rgba(255, 255, 255, 0.15);
+    }
+
+    .selected-filename {
+      font-size: 0.85rem;
+      color: #93c5fd;
+      font-family: 'JetBrains Mono', monospace;
+      word-break: break-all;
+    }
+
+    /* Alert / Error Banner */
+    .alert-banner {
+      display: none;
+      padding: 1rem 1.2rem;
+      border-radius: 12px;
+      font-size: 0.9rem;
+      font-weight: 500;
+      align-items: center;
+      gap: 0.8rem;
+      animation: fadeIn 0.3s ease;
+    }
+
+    .alert-banner.error {
+      display: flex;
+      background: var(--red-bg);
+      border: 1px solid var(--red-border);
+      color: #fca5a5;
+    }
+
+    .alert-banner.success {
+      display: flex;
+      background: var(--green-bg);
+      border: 1px solid var(--green-border);
+      color: #6ee7b7;
+    }
+
+    .alert-banner.warning {
+      display: flex;
+      background: var(--orange-bg);
+      border: 1px solid var(--orange-border);
+      color: #fed7aa;
+    }
+
+    .alert-banner .close-btn {
+      margin-left: auto;
+      background: none;
+      border: none;
+      color: inherit;
+      padding: 0;
+      font-size: 1.2rem;
+      cursor: pointer;
+    }
+
+    /* File Table */
+    .table-container {
+      overflow-x: auto;
+      max-height: 400px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+      font-size: 0.9rem;
+    }
+
+    th {
+      padding: 0.8rem 1rem;
+      color: var(--text-muted);
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    td {
+      padding: 0.9rem 1rem;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+      vertical-align: middle;
+    }
+
+    tr:hover td {
+      background: rgba(255, 255, 255, 0.02);
+    }
+
+    .file-name {
+      font-weight: 600;
+      color: var(--text-main);
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .file-id {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .file-time {
+      color: var(--text-muted);
+      font-size: 0.82rem;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 3rem 1rem;
+      color: var(--text-muted);
+      font-size: 0.9rem;
+    }
+
+    .spinner {
+      width: 16px;
+      height: 16px;
+      border: 2px solid rgba(255, 255, 255, 0.3);
+      border-radius: 50%;
+      border-top-color: white;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(-5px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    
+    <!-- Header -->
+    <header>
+      <div class="title-row">
+        <div>
+          <h1>Reed-Solomon Erasure Storage</h1>
+          <p class="subtitle">Distributed Object Store with SHA-256 Checksum Integrity & Bit-Rot Detection (k=4, m=2)</p>
+        </div>
+        <div class="badge" style="background: rgba(59, 130, 246, 0.15); border: 1px solid rgba(59, 130, 246, 0.3); color: #93c5fd;">
+          k=4 &bull; m=2 &bull; Total=6 Shards
+        </div>
+      </div>
+    </header>
+
+    <!-- Global Alert / Error Notification -->
+    <div id="alertBanner" class="alert-banner">
+      <span id="alertIcon">⚠️</span>
+      <span id="alertMessage">Error message</span>
+      <button class="close-btn" onclick="hideAlert()">&times;</button>
+    </div>
+
+    <!-- Live Storage Stats -->
+    <div class="stats-card">
+      <div class="stat-box">
+        <span class="stat-label">System Health</span>
+        <div id="healthBadge" class="health-pill healthy">
+          <span class="status-dot"></span>
+          <span id="healthText">Healthy</span>
+        </div>
+      </div>
+      <div class="stat-box">
+        <span class="stat-label">Online Storage Nodes</span>
+        <div class="stat-value" id="nodeCountStat">
+          <span id="aliveCount">6</span> <span style="font-size: 0.95rem; color: var(--text-muted); font-weight: 500;">/ 6 online</span>
+        </div>
+      </div>
+      <div class="stat-box">
+        <span class="stat-label">Valid Shards</span>
+        <div class="stat-value" id="validShardStat">
+          <span id="validCount" style="color: var(--green-text);">6</span> <span style="font-size: 0.95rem; color: var(--text-muted); font-weight: 500;">/ 6 uncorrupted</span>
+        </div>
+      </div>
+      <div class="stat-box">
+        <span class="stat-label">Fault Tolerance Status</span>
+        <div style="font-size: 0.88rem; font-weight: 500;" id="toleranceMessage">
+          Up to 2 simultaneous node failures or corrupted shards supported
+        </div>
+      </div>
+      <div class="stat-box" style="border-top: 1px solid rgba(255,255,255,0.06); padding-top: 0.8rem; grid-column: 1 / -1; display: flex; flex-direction: row; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.8rem;">
+        <div>
+          <span class="stat-label">🛡️ Background Self-Healing (Every 15s)</span>
+          <div style="font-size: 0.85rem; color: var(--text-main); margin-top: 0.2rem;" id="repairStatusText">
+            Last scan: <span id="lastScanTime">Not run yet</span> &bull; <span id="lastRepairsCount">0 repairs made</span>
+          </div>
+        </div>
+        <button type="button" class="file-select-btn" style="padding: 0.35rem 0.8rem; font-size: 0.78rem;" onclick="triggerManualRepair()">Run Healer Now</button>
+      </div>
+      <div class="stat-box" style="border-top: 1px solid rgba(255,255,255,0.06); padding-top: 0.8rem; grid-column: 1 / -1; display: flex; flex-direction: row; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.8rem;">
+        <div>
+          <span class="stat-label">🌐 Network Partition Simulation</span>
+          <div style="font-size: 0.85rem; color: var(--text-main); margin-top: 0.2rem;" id="partitionStatusText">
+            Status: <span id="partitionStatus">Cluster Fully Connected</span>
+          </div>
+        </div>
+        <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+          <button type="button" class="file-select-btn" style="padding: 0.35rem 0.7rem; font-size: 0.75rem; background: rgba(168, 85, 247, 0.2); border: 1px solid #a855f7; color: #d8b4fe;" onclick="triggerPartition([0,1,2],[3,4,5])">Split [0,1,2] | [3,4,5]</button>
+          <button type="button" class="file-select-btn" style="padding: 0.35rem 0.7rem; font-size: 0.75rem; background: rgba(168, 85, 247, 0.2); border: 1px solid #a855f7; color: #d8b4fe;" onclick="triggerPartition([0,1,2,3],[4,5])">Split [0,1,2,3] | [4,5]</button>
+          <button type="button" class="file-select-btn" style="padding: 0.35rem 0.7rem; font-size: 0.75rem; background: var(--green-bg); border: 1px solid var(--green-border); color: var(--green-text);" onclick="triggerHealPartition()">Heal Partition</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Storage Nodes Grid -->
+    <div>
+      <div class="section-title">
+        <span>Storage Cluster Nodes (0–5)</span>
+        <span style="font-size: 0.8rem; color: var(--text-muted); font-weight: 400;">Auto-refreshes every 2s &bull; Click "Corrupt Shard" to test bit-rot on live node</span>
+      </div>
+      <div class="node-grid" id="nodeGrid">
+        <!-- Rendered via JS -->
+      </div>
+    </div>
+
+    <!-- Main Content: Upload & File List -->
+    <div class="main-grid">
+      
+      <!-- Upload Panel -->
+      <div class="panel">
+        <div class="section-title">Upload File</div>
+        <form id="uploadForm" onsubmit="handleUpload(event)">
+          <div class="upload-box" onclick="document.getElementById('fileInput').click()">
+            <input type="file" id="fileInput" class="file-input" onchange="handleFileSelected(event)">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#93c5fd" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+              <polyline points="17 8 12 3 7 8"></polyline>
+              <line x1="12" y1="3" x2="12" y2="15"></line>
+            </svg>
+            <button type="button" class="file-select-btn">Choose File</button>
+            <div id="selectedFilename" class="selected-filename">No file chosen</div>
+          </div>
+          <button type="submit" id="uploadBtn" class="btn-primary" style="width: 100%; margin-top: 1rem;" disabled>
+            <span id="uploadBtnText">Upload & Encode (6 Shards)</span>
+          </button>
+        </form>
+      </div>
+
+      <!-- File List Panel -->
+      <div class="panel">
+        <div class="section-title">
+          <span>Stored Objects</span>
+          <button class="file-select-btn" style="padding: 0.25rem 0.6rem; font-size: 0.75rem;" onclick="loadObjects()">Refresh</button>
+        </div>
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>File Name</th>
+                <th>Uploaded At</th>
+                <th style="text-align: right;">Action</th>
+              </tr>
+            </thead>
+            <tbody id="objectsTableBody">
+              <tr>
+                <td colspan="3" class="empty-state">Loading objects...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+
+  <script>
+    let selectedFile = null;
+    let isUploading = false;
+    let downloadingMap = {};
+    let latestObjectId = null;
+
+    function showAlert(message, type = 'error') {
+      const banner = document.getElementById('alertBanner');
+      const text = document.getElementById('alertMessage');
+      const icon = document.getElementById('alertIcon');
+      
+      banner.className = `alert-banner ${type}`;
+      text.textContent = message;
+      icon.textContent = type === 'error' ? '⚠️' : (type === 'warning' ? '⚡' : '✓');
+      banner.style.display = 'flex';
+
+      if (type === 'success') {
+        setTimeout(hideAlert, 4000);
+      }
+    }
+
+    function hideAlert() {
+      document.getElementById('alertBanner').style.display = 'none';
+    }
+
+    function handleFileSelected(event) {
+      const file = event.target.files[0];
+      if (file) {
+        selectedFile = file;
+        document.getElementById('selectedFilename').textContent = `${file.name} (${(file.size / 1024).toFixed(1)} KB)`;
+        document.getElementById('uploadBtn').disabled = false;
+      } else {
+        selectedFile = null;
+        document.getElementById('selectedFilename').textContent = 'No file chosen';
+        document.getElementById('uploadBtn').disabled = true;
+      }
+    }
+
+    // --- Node Status ---
+    async function fetchNodeStatus() {
+      try {
+        const queryParam = latestObjectId ? `?objectId=${encodeURIComponent(latestObjectId)}` : '';
+        const res = await fetch(`/nodes/status${queryParam}`);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        renderNodeStatus(data);
+      } catch (err) {
+        console.error('Failed to fetch node status:', err);
+      }
+    }
+
+    function renderNodeStatus(data) {
+      const { totalNodes, aliveCount, validCount, healthStatus, nodes, activeObjectId } = data;
+      
+      if (activeObjectId && !latestObjectId) {
+        latestObjectId = activeObjectId;
+      }
+
+      // Update Stats
+      document.getElementById('aliveCount').textContent = aliveCount;
+      const validSpan = document.getElementById('validCount');
+      validSpan.textContent = validCount !== undefined ? validCount : aliveCount;
+      
+      const healthBadge = document.getElementById('healthBadge');
+      const healthText = document.getElementById('healthText');
+      const toleranceMsg = document.getElementById('toleranceMessage');
+
+      healthBadge.className = 'health-pill';
+
+      const effectiveValid = validCount !== undefined ? validCount : aliveCount;
+
+      if (healthStatus === 'HEALTHY' && effectiveValid >= 5) {
+        healthBadge.classList.add('healthy');
+        healthText.textContent = 'Healthy';
+        const tolerableLoss = effectiveValid - 4;
+        toleranceMsg.textContent = `Fault Tolerant: up to ${tolerableLoss} more node failure${tolerableLoss > 1 ? 's' : ''} or shard corruption${tolerableLoss > 1 ? 's' : ''} supported`;
+        validSpan.style.color = 'var(--green-text)';
+      } else if (healthStatus === 'DEGRADED' || effectiveValid === 4) {
+        healthBadge.classList.add('degraded');
+        healthText.textContent = 'Degraded';
+        toleranceMsg.textContent = 'Minimum 4 valid shards alive — 1 more failure/corruption breaks recovery';
+        validSpan.style.color = 'var(--yellow-text)';
+      } else {
+        healthBadge.classList.add('impossible');
+        healthText.textContent = 'Reconstruction impossible';
+        toleranceMsg.textContent = `Insufficient valid shards (${effectiveValid}/6 valid). Need at least 4 shards.`;
+        validSpan.style.color = 'var(--red-text)';
+      }
+
+      // Update Partition status text
+      const partitionStatus = document.getElementById('partitionStatus');
+      if (data.partitionState && data.partitionState.active) {
+        partitionStatus.innerHTML = `<span style="color: #c084fc; font-weight: 600;">ACTIVE (Reachable: [${data.partitionState.reachableNodes.join(', ')}], Partitioned: [${data.partitionState.unreachableNodes.join(', ')}])</span>`;
+      } else {
+        partitionStatus.innerHTML = `<span style="color: var(--green-text); font-weight: 600;">Cluster Fully Connected</span>`;
+      }
+
+      // Render Grid
+      const grid = document.getElementById('nodeGrid');
+      grid.innerHTML = nodes.map(node => {
+        const isAlive = node.isAlive;
+        const isPartitioned = node.isPartitioned;
+        const isCorrupted = node.isCorrupted;
+        const roleLabel = node.role === 'Data' ? 'Data Shard' : 'Parity Shard';
+        
+        let cardClass = 'node-card';
+        let statusText = 'OFFLINE';
+        if (!isAlive) {
+          cardClass += ' dead';
+          statusText = 'OFFLINE';
+        } else if (isPartitioned) {
+          cardClass += ' partitioned';
+          statusText = 'PARTITIONED (UNREACHABLE)';
+        } else if (isCorrupted) {
+          cardClass += ' alive corrupted';
+          statusText = 'ONLINE (CORRUPTED)';
+        } else {
+          cardClass += ' alive';
+          statusText = 'ONLINE';
+        }
+
+        return `
+          <div class="${cardClass}">
+            <div class="node-header">${node.name}</div>
+            <div class="node-role">${roleLabel}</div>
+            
+            ${isPartitioned ? `<div class="partitioned-badge">⚡ Partitioned</div>` : ''}
+            ${isCorrupted && !isPartitioned ? `<div class="corrupted-badge">⚠️ Shard Corrupted</div>` : ''}
+
+            <div class="node-status-text">
+              <span class="status-dot"></span>
+              <span>${statusText}</span>
+            </div>
+
+            <div class="node-btn-group">
+              ${
+                isAlive 
+                  ? `
+                    <button class="btn-kill" onclick="toggleNodeFailure(${node.nodeIndex}, true)">Kill Node</button>
+                    <button class="btn-corrupt" onclick="corruptShard(${node.nodeIndex})">Corrupt Shard</button>
+                  `
+                  : `<button class="btn-revive" onclick="toggleNodeFailure(${node.nodeIndex}, false)">Revive Node</button>`
+              }
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    async function triggerPartition(groupA, groupB) {
+      try {
+        hideAlert();
+        const res = await fetch('/simulate-partition', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ groupA, groupB, activeGroup: 'groupA' })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Failed to simulate partition');
+        showAlert(`Network partition simulated: Reachable [${groupA.join(', ')}], Partitioned [${groupB.join(', ')}]`, 'warning');
+        await fetchNodeStatus();
+      } catch (err) {
+        showAlert(`Partition error: ${err.message}`, 'error');
+      }
+    }
+
+    async function triggerHealPartition() {
+      try {
+        hideAlert();
+        const res = await fetch('/heal-partition', { method: 'POST' });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Failed to heal partition');
+        showAlert('Network partition healed! All online nodes are reachable.', 'success');
+        await fetchNodeStatus();
+      } catch (err) {
+        showAlert(`Heal partition error: ${err.message}`, 'error');
+      }
+    }
+
+    async function toggleNodeFailure(nodeIndex, shouldKill) {
+      try {
+        hideAlert();
+        const endpoint = shouldKill ? `/simulate-failure/${nodeIndex}` : `/recover/${nodeIndex}`;
+        const res = await fetch(endpoint, { method: 'POST' });
+        if (!res.ok) {
+          const body = await res.json().catch(() => ({}));
+          throw new Error(body.error || `Action failed with status ${res.status}`);
+        }
+        await fetchNodeStatus();
+      } catch (err) {
+        showAlert(`Failed to ${shouldKill ? 'kill' : 'revive'} node ${nodeIndex}: ${err.message}`, 'error');
+      }
+    }
+
+    async function corruptShard(nodeIndex) {
+      try {
+        hideAlert();
+        const objectIdUrl = latestObjectId ? `/${latestObjectId}` : '';
+        const res = await fetch(`/corrupt-shard/${nodeIndex}${objectIdUrl}`, { method: 'POST' });
+        const body = await res.json().catch(() => ({}));
+        
+        if (!res.ok) {
+          throw new Error(body.error || `Corruption action failed with status ${res.status}`);
+        }
+
+        showAlert(`Shard on Node ${nodeIndex} corrupted successfully (Node remains ONLINE/reachable, SHA-256 mismatch will be caught on download)!`, 'warning');
+        await fetchNodeStatus();
+      } catch (err) {
+        showAlert(`Failed to corrupt shard on node ${nodeIndex}: ${err.message}`, 'error');
+      }
+    }
+
+    // --- Upload ---
+    async function handleUpload(event) {
+      event.preventDefault();
+      if (!selectedFile || isUploading) return;
+
+      isUploading = true;
+      const uploadBtn = document.getElementById('uploadBtn');
+      const uploadBtnText = document.getElementById('uploadBtnText');
+      uploadBtn.disabled = true;
+      uploadBtnText.innerHTML = '<span class="spinner"></span> Encoding & Computing SHA-256...';
+      hideAlert();
+
+      try {
+        const formData = new FormData();
+        formData.append('file', selectedFile);
+
+        const res = await fetch('/upload', {
+          method: 'POST',
+          body: formData
+        });
+
+        const data = await res.json();
+        if (!res.ok) {
+          throw new Error(data.error || 'Upload failed');
+        }
+
+        latestObjectId = data.objectId;
+        showAlert(`File "${selectedFile.name}" encoded into 6 shards with SHA-256 checksums!`, 'success');
+        
+        // Reset form
+        selectedFile = null;
+        document.getElementById('fileInput').value = '';
+        document.getElementById('selectedFilename').textContent = 'No file chosen';
+        
+        // Refresh objects list & status
+        await loadObjects();
+        await fetchNodeStatus();
+      } catch (err) {
+        showAlert(`Upload error: ${err.message}`, 'error');
+      } finally {
+        isUploading = false;
+        uploadBtn.disabled = selectedFile === null;
+        uploadBtnText.textContent = 'Upload & Encode (6 Shards)';
+      }
+    }
+
+    // --- File List & Download ---
+    async function loadObjects() {
+      const tbody = document.getElementById('objectsTableBody');
+      try {
+        const res = await fetch('/objects');
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const objects = await res.json();
+
+        if (objects.length === 0) {
+          tbody.innerHTML = `<tr><td colspan="3" class="empty-state">No objects stored yet. Upload a file above!</td></tr>`;
+          return;
+        }
+
+        if (!latestObjectId && objects.length > 0) {
+          latestObjectId = objects[0].objectId;
+        }
+
+        tbody.innerHTML = objects.map(obj => {
+          const dateStr = new Date(obj.createdAt).toLocaleString();
+          const isDownloading = downloadingMap[obj.objectId];
+          const isSelected = obj.objectId === latestObjectId;
+          return `
+            <tr style="${isSelected ? 'background: rgba(59, 130, 246, 0.08);' : ''}">
+              <td>
+                <div class="file-name">📄 ${escapeHtml(obj.originalName)} ${isSelected ? '<span style="font-size:0.7rem; padding:0.1rem 0.4rem; background:rgba(59,130,246,0.2); color:#93c5fd; border-radius:4px;">Active Target</span>' : ''}</div>
+                <div class="file-id">${obj.objectId}</div>
+              </td>
+              <td class="file-time">${dateStr}</td>
+              <td style="text-align: right;">
+                <button class="btn-download" onclick="downloadObject('${obj.objectId}', '${escapeHtml(obj.originalName)}')" ${isDownloading ? 'disabled' : ''}>
+                  ${isDownloading ? '<span class="spinner"></span>' : '⬇ Download'}
+                </button>
+              </td>
+            </tr>
+          `;
+        }).join('');
+      } catch (err) {
+        tbody.innerHTML = `<tr><td colspan="3" class="empty-state" style="color: var(--red-text);">Failed to load objects: ${err.message}</td></tr>`;
+      }
+    }
+
+    async function downloadObject(objectId, filename) {
+      if (downloadingMap[objectId]) return;
+      downloadingMap[objectId] = true;
+      latestObjectId = objectId;
+      loadObjects();
+      fetchNodeStatus();
+      hideAlert();
+
+      try {
+        const res = await fetch(`/download/${objectId}`);
+
+        if (!res.ok) {
+          const errorJson = await res.json().catch(() => null);
+          const errorMsg = (errorJson && errorJson.error) 
+            ? errorJson.error 
+            : `Download failed with HTTP ${res.status}`;
+          throw new Error(errorMsg);
+        }
+
+        // Extract filename from header if available
+        let downloadName = filename;
+        const disposition = res.headers.get('Content-Disposition');
+        if (disposition && disposition.includes('filename=')) {
+          const match = disposition.match(/filename="?([^";]+)"?/);
+          if (match && match[1]) {
+            downloadName = decodeURIComponent(match[1]);
+          }
+        }
+
+        const blob = await res.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.style.display = 'none';
+        a.href = url;
+        a.download = downloadName;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+
+        showAlert(`Successfully downloaded and reconstructed "${downloadName}" (SHA-256 integrity verified)!`, 'success');
+      } catch (err) {
+        showAlert(`Download error: ${err.message}`, 'error');
+      } finally {
+        downloadingMap[objectId] = false;
+        loadObjects();
+        fetchNodeStatus();
+      }
+    }
+
+    function escapeHtml(str) {
+      if (!str) return '';
+      return str
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+
+    async function fetchRepairStatus() {
+      try {
+        const res = await fetch('/repair/status');
+        if (!res.ok) return;
+        const data = await res.json();
+        
+        const scanTimeEl = document.getElementById('lastScanTime');
+        const countEl = document.getElementById('lastRepairsCount');
+        
+        if (data.lastScanTime) {
+          const d = new Date(data.lastScanTime);
+          scanTimeEl.textContent = d.toLocaleTimeString();
+        } else {
+          scanTimeEl.textContent = 'Active (Every 15s)';
+        }
+
+        if (data.repairsCount > 0) {
+          countEl.innerHTML = `<span style="color: #6ee7b7; font-weight: 600;">✨ ${data.repairsCount} shard${data.repairsCount > 1 ? 's' : ''} auto-healed</span>`;
+        } else {
+          countEl.textContent = 'Cluster clean (0 repairs needed)';
+        }
+      } catch (e) {
+        // Ignore network hiccups
+      }
+    }
+
+    async function triggerManualRepair() {
+      try {
+        hideAlert();
+        showAlert('Running self-healing scan across all storage nodes...', 'warning');
+        const res = await fetch('/repair/scan', { method: 'POST' });
+        const data = await res.json();
+        if (res.ok) {
+          const repaired = data.repairs ? data.repairs.length : 0;
+          if (repaired > 0) {
+            showAlert(`Self-healing completed! Restored ${repaired} missing/corrupted shard(s) back to disk.`, 'success');
+          } else {
+            showAlert('Self-healing scan complete! All alive nodes already have valid shards.', 'success');
+          }
+          await fetchNodeStatus();
+          await fetchRepairStatus();
+        } else {
+          showAlert(`Healer error: ${data.error}`, 'error');
+        }
+      } catch (err) {
+        showAlert(`Healer trigger failed: ${err.message}`, 'error');
+      }
+    }
+
+    // Auto-refresh loop (every 2 seconds)
+    setInterval(() => {
+      fetchNodeStatus();
+      fetchRepairStatus();
+    }, 2000);
+
+    // Initial Load
+    fetchNodeStatus();
+    fetchRepairStatus();
+    loadObjects();
+  </script>
+</body>
+</html>

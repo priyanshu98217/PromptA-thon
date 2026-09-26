@@ -7,10 +7,19 @@ const { v4: uuidv4 } = require('uuid');
 const mime = require('mime-types');
 const { encodeBuffer, decodeShards } = require('./erasure.js');
 const nodeClient = require('./nodeClient.js');
+const repair = require('./repair.js');
+const rebalance = require('./rebalance.js');
 
 const app = express();
 app.use(express.json());
+
+// Serve static assets from public/ directory
 app.use(express.static(path.join(__dirname, 'public')));
+
+// Explicit route to serve the Erasure Storage web dashboard UI at '/'
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
 
 /**
  * GET /nodes/status
@@ -479,8 +488,7 @@ app.post('/recover/:nodeIndex', async (req, res) => {
   }
 });
 
-const repair = require('./repair.js');
-const rebalance = require('./rebalance.js');
+
 
 /**
  * POST /nodes/add
